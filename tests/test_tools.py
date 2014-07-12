@@ -37,6 +37,7 @@ class TestDataFrame(unittest.TestCase):
 
     def test_intersection(self):
         df = overlay(self.polydf, self.polydf2, how="intersection")
+        self.assertIsNotNone(df['BoroName'][0])
         self.assertEquals(df.shape, (68, 7))
 
     def test_identity(self):
@@ -47,8 +48,8 @@ class TestDataFrame(unittest.TestCase):
         df = overlay(self.polydf, self.polydf2, how="symmetric_difference")
         self.assertEquals(df.shape, (122, 7))
 
-    def test_erase(self):
-        df = overlay(self.polydf, self.polydf2, how="erase")
+    def test_difference(self):
+        df = overlay(self.polydf, self.polydf2, how="difference")
         self.assertEquals(df.shape, (86, 7))
 
     def test_bad_how(self):

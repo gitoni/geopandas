@@ -16,7 +16,7 @@ def overlay(df1, df2, how):
         'union',
         'identity',
         'symmetric_difference',
-        'erase',
+        'difference',  # aka erase
     ]
 
     if how not in allowed_hows:
@@ -93,6 +93,8 @@ def overlay(df1, df2, how):
         candidates2 = df2.iterrows()
         df1_hit = False
         df2_hit = False
+        prop1 = None
+        prop2 = None
         for i, cand in candidates1:
             if cent.intersects(cand['geometry']):
                 df1_hit = True
@@ -114,15 +116,13 @@ def overlay(df1, df2, how):
             hit = True
         elif how == "symmetric_difference" and not (df1_hit and df2_hit):
             hit = True
-        elif how == "erase" and (df1_hit and not df2_hit):
+        elif how == "difference" and (df1_hit and not df2_hit):
             hit = True
 
         if not hit:
             continue
 
         # gather properties
-        prop1 = None
-        prop2 = None
         if prop1 is None:
             prop1 = pd.Series(dict.fromkeys(df1.columns, None))
         if prop2 is None:
