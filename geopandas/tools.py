@@ -3,6 +3,41 @@ from shapely.geometry import MultiLineString
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
 
+def _extract_rings(df):
+    """Collects all inner and outer linear rings from a GeoDataFrame 
+    with (multi)Polygon geometeries
+
+    Parameters
+    ----------
+    df: GeoDataFrame with MultiPolygon or Polygon geometry column
+
+    Returns
+    -------
+    rings: list of LinearRings
+    """
+    poly_msg = "overlay only takes GeoDataFrames with (multi)polygon geometries"
+    rings = []
+    for i, feat in df.iterrows():
+        geom = feat.geometry
+
+        if geom.type not in ['Polygon', 'MultiPolygon']:
+            raise TypeError(poly_msg)
+
+        if hasattr(geom, 'geoms'):
+            for poly in geom.geoms:  # if it's a multipolygon
+                if not poly.is_valid:
+                    # geom from layer is not valid attempting fix by buffer 0"
+                    poly = poly.buffer(0)
+                rings.append(poly.exterior)
+                rings.extend(poly.interiors)
+        else:
+            if not geom.is_valid:
+                # geom from layer is not valid attempting fix by buffer 0"
+                geom = geom.buffer(0)
+            rings.append(geom.exterior)
+            rings.extend(geom.interiors)
+
+    return rings
 
 def overlay(df1, df2, how):
     """Perform spatial overlay between two polygons
@@ -22,52 +57,10 @@ def overlay(df1, df2, how):
     if how not in allowed_hows:
         raise ValueError("`how` was \"%s\" but is expected to be in %s" % \
             (how, allowed_hows))
-    poly_msg = "overlay only takes GeoDataFrames with (multi)polygon geometries"
 
     # Collect the interior and exterior rings
-    rings1 = []
-    rings2 = []
-
-    for i, feat in df1.iterrows():
-        geom = feat.geometry
-
-        if geom.type not in ['Polygon', 'MultiPolygon']:
-            raise TypeError(poly_msg)
-
-        if hasattr(geom, 'geoms'):
-            for poly in geom.geoms:  # if it's a multipolygon
-                if not poly.is_valid:
-                    # geom from layer is not valid attempting fix by buffer 0"
-                    poly = poly.buffer(0)
-                rings1.append(poly.exterior)
-                rings1.extend(poly.interiors)
-        else:
-            if not geom.is_valid:
-                # geom from layer is not valid attempting fix by buffer 0"
-                geom = geom.buffer(0)
-            rings1.append(geom.exterior)
-            rings1.extend(geom.interiors)
-
-    for i, feat in df2.iterrows():
-        geom = feat.geometry
-
-        if geom.type not in ['Polygon', 'MultiPolygon']:
-            raise TypeError(poly_msg)
-
-        if hasattr(geom, 'geoms'):
-            for poly in geom.geoms:  # multipolygon
-                if not poly.is_valid:
-                    # geom from self layer is not valid attempting fix by buffer 0"
-                    poly = poly.buffer(0)
-                rings2.append(poly.exterior)
-                rings2.extend(poly.interiors)
-        else:
-            if not geom.is_valid:
-                # geom from self layer is not valid attempting fix by buffer 0"
-                geom = geom.buffer(0)
-            rings2.append(geom.exterior)
-            rings2.extend(geom.interiors)
-
+    rings1 = _extract_rings(df1)
+    rings2 = _extract_rings(df2)
     mls1 = MultiLineString(rings1)
     mls2 = MultiLineString(rings2)
 
